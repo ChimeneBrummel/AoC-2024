@@ -1,27 +1,50 @@
-const example = await Deno.readTextFile("example.txt");
-const array = example.split('\n').map(line => line.split(''));
+const input = await Deno.readTextFile("input.txt");
+const array = input.split('\n').map(line => line.split(''));
 
-function countXMASPatterns(array: string[][]): number {
-    const xmasOffsets = [
-        [-1, -1], [-1, 1],
-        [1, -1], [1, 1], 
+function countXMAS(array: string[][]): number {
+
+    const directions: [number, number][] = [
+        [-1, -1], //top left
+        [-1, 1], //top right
     ];
 
-    return array.map((row, rowIndex) =>
-        row.map((cell, colIndex) =>
-            cell === "A" &&
-            xmasOffsets.every(([dx, dy], i) =>
-                isInBounds(rowIndex + dx, colIndex + dy, array) &&
-                array[rowIndex + dx][colIndex + dy] === (i % 2 === 0 ? "M" : "S")
-            )
-                ? 1
-                : 0
-        ).reduce((sum, count) => sum + count, 0)
-    ).reduce((total, rowSum) => total + rowSum, 0);
+    const correspondingDirections: Record<string, [number, number]> = {
+        '-1,-1': [1, 1],
+        '-1,1': [1, -1]
+    }
+
+    const correspondingLetters: Record<string, string> = {
+        'M': 'S',
+        'S': 'M'
+    }
+
+    const xmasPattern = /M|S/;
+
+    return array.flatMap((row, rowIndex) =>
+        row.flatMap((cell, colIndex) =>
+            cell === 'A' && directions.every((direction) => {
+                const topLetter = searchDirection(array, rowIndex, colIndex, direction);
+                if (!topLetter) return false;
+                const topLetterValid = topLetter.match(xmasPattern)
+                const bottomLetter = searchDirection(array, rowIndex, colIndex, correspondingDirections[direction.toString()]);
+                if (!bottomLetter) return false;
+                const bottomLetterValid = bottomLetter === correspondingLetters[topLetter];
+                return topLetterValid && bottomLetterValid
+            })
+        )
+    ).reduce((acc, curr) => {
+        if (curr) {
+            return acc + 1
+        }
+        return acc
+    }, 0);
 }
 
-function isInBounds(row: number, col: number, grid: string[][]): boolean {
-    return row >= 0 && row < grid.length && col >= 0 && col < grid[0].length;
-}
+function searchDirection(grid: string[][], startRow: number, startCol: number,
+    [y, x]: [number, number]): string {
+    const newRow = startRow + y;
+    const newCol = startCol + x;
+    return grid?.[newRow]?.[newCol];
+};
 
-console.log(countXMASPatterns(array));
+console.log(countXMAS(array));
